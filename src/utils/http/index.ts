@@ -1,14 +1,28 @@
-import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios';
-import { ElMessage as message } from 'element-plus';
+import { message } from 'ant-design-vue';
+import axios, {
+  Axios,
+  AxiosDefaults,
+  AxiosHeaderValue,
+  AxiosInstance,
+  AxiosRequestConfig,
+  CreateAxiosDefaults,
+  HeadersDefaults
+} from 'axios';
+import { handleRequest, handleResponse } from './jsonServerHandler';
 
 type InterceptorOptions = {
   showMessage?: boolean;
+  needResponse?: boolean;
 };
 
-const handleInterceptors = (service: AxiosInstance, { showMessage = true }: InterceptorOptions = {}) => {
+const handleInterceptors = (
+  service: AxiosInstance,
+  { showMessage = true, needResponse = false }: InterceptorOptions = {}
+) => {
   service.interceptors.request.use(
     config => {
       // 在发送请求之前做些什么
+      handleRequest(config);
       return config;
     },
     error => {
@@ -23,6 +37,7 @@ const handleInterceptors = (service: AxiosInstance, { showMessage = true }: Inte
     response => {
       //解决某些api无论失败还是成功 都是200，但会把状态码套在data里
       const data = response.data;
+
       if (data.status && data.status === 'error') {
         if (data.code === 401) {
           // 未授权
@@ -40,15 +55,16 @@ const handleInterceptors = (service: AxiosInstance, { showMessage = true }: Inte
           // 其他错误
           showMessage && message.error(data.message ?? data.info ?? '未知异常');
         }
-        return Promise.reject(data);
+        return Promise.reject(response);
       }
       // 对响应数据做些什么
-      return response.data;
+      handleResponse(response);
+      const returnData = needResponse ? response : response.data;
+      return returnData;
     },
     error => {
       // 对响应错误做些什么
       if (error.response) {
-        debugger;
         // 客户端没有收到响应，或者响应的状态码在400-499之间
         if (error.response.status === 401) {
           // 未授权
@@ -82,24 +98,59 @@ const handleInterceptors = (service: AxiosInstance, { showMessage = true }: Inte
 
 type CreateInstanceConfig = CreateAxiosDefaults & {
   message?: boolean;
+  needResponse?: boolean;
 };
 
-export const genAxiosInstance = ({
-  message = true,
-  baseURL = '/api',
-  timeout = 5000,
-  ...config
-}: CreateInstanceConfig = {}) => {
+interface NewAxiosInstance extends Axios {
+  <T = any, R = T, D = any>(config: AxiosRequestConfig<D>): Promise<R>;
+  <T = any, R = T, D = any>(url: string, config?: AxiosRequestConfig<D>): Promise<R>;
+
+  defaults: Omit<AxiosDefaults, 'headers'> & {
+    headers: HeadersDefaults & {
+      [key: string]: AxiosHeaderValue;
+    };
+  };
+  request<T = any, R = T, D = any>(config: AxiosRequestConfig<D>): Promise<R>;
+  get<T = any, R = T, D = any>(url: string, config?: AxiosRequestConfig<D>): Promise<R>;
+  delete<T = any, R = T, D = any>(url: string, config?: AxiosRequestConfig<D>): Promise<R>;
+  head<T = any, R = T, D = any>(url: string, config?: AxiosRequestConfig<D>): Promise<R>;
+  options<T = any, R = T, D = any>(url: string, config?: AxiosRequestConfig<D>): Promise<R>;
+  post<T = any, R = T, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>): Promise<R>;
+  put<T = any, R = T, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>): Promise<R>;
+  patch<T = any, R = T, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>): Promise<R>;
+  postForm<T = any, R = T, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>): Promise<R>;
+  putForm<T = any, R = T, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>): Promise<R>;
+  patchForm<T = any, R = T, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>): Promise<R>;
+}
+
+export function genAxiosInstance(): NewAxiosInstance;
+export function genAxiosInstance(config: CreateInstanceConfig): NewAxiosInstance;
+export function genAxiosInstance(config: CreateInstanceConfig, needResponse: boolean): AxiosInstance;
+export function genAxiosInstance(
+  { message = true, baseURL = '/api', timeout = 5000, ...config }: CreateInstanceConfig = {},
+  needResponse = false
+) {
   const inst = axios.create({ baseURL, timeout, ...config });
   handleInterceptors(inst, { showMessage: message });
-  return inst;
-};
+
+  if (needResponse) return inst;
+  return inst as NewAxiosInstance;
+}
 
 export default genAxiosInstance({});
 
-export type CommonRes<T> = {
-  data: T;
-  status: 'success' | 'error';
-  code: number;
-  info: string;
+export type CommonRes<T> = T;
+
+export type QueryList<Data> = {
+  page: number;
+  pageSize: number;
+  orderBy?: keyof Data;
+  order?: 'asc' | 'desc';
+} & {
+  [Key in keyof Data]?: Data[Key] | string | number;
 };
+
+export type ListRes<T> = CommonRes<{
+  total: 0;
+  data: T[];
+}>;

@@ -1,9 +1,8 @@
-import 'modern-normalize/modern-normalize.css'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import { createApp } from 'vue'
-import './style.css'
-import App from './App.vue'
-import { router } from './router'
+import 'modern-normalize/modern-normalize.css';
+import { createApp } from 'vue';
+import './style.css';
+import App from './App.vue';
+import Antd from 'ant-design-vue';
+import { router } from './router';
 
-createApp(App).use(router).use(ElementPlus).mount('#app')
+createApp(App).use(router).use(Antd).mount('#app');

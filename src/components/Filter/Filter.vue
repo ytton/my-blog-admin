@@ -1,30 +1,28 @@
 <template>
-  <el-form :model="localValue" ref="formRef" label-width="100px" class="filter-form">
-    <el-row :gutter="20">
-      <el-col v-for="(item, index) in formList" :key="index" v-bind="item.colProps" :span="item.span || 8">
-        <el-form-item :label="item.label" :prop="item.name">
+  <a-form :model="localValue" ref="formRef" label-width="100px" class="filter-form">
+    <a-row :gutter="20">
+      <a-col v-for="(item, index) in formList" :key="index" v-bind="item.colProps" :span="item.span || 8">
+        <a-form-item :label="item.label" :prop="item.name">
           <component
             :is="item.input"
             v-model="localValue[item.name]"
             v-bind="item.inputProps"
             :class="item.class"
           ></component>
-        </el-form-item>
-      </el-col>
-      <el-col span="0" class="ml-auto">
-        <el-space>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-space>
-      </el-col>
-    </el-row>
-  </el-form>
+        </a-form-item>
+      </a-col>
+      <a-col class="ml-auto">
+        <a-space>
+          <a-button type="primary" @click="handleSearch">搜索</a-button>
+          <a-button @click="handleReset">重置</a-button>
+        </a-space>
+      </a-col>
+    </a-row>
+  </a-form>
 </template>
 
 <script setup lang="ts">
 import { ref, defineProps, watch } from 'vue';
-import { ElForm } from 'element-plus';
-
 interface FormItem {
   input: string;
   inputProps?: Record<string, any>;
@@ -42,7 +40,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:value', 'search']);
 
-const formRef = ref<InstanceType<typeof ElForm>>();
+const formRef = ref();
 const localValue = ref({ ...props.value });
 
 watch(
